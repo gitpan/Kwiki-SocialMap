@@ -22,10 +22,10 @@ See <http://www.perl.com/perl/misc/Artistic.html>
 use strict;
 use warnings;
 use Kwiki::Plugin '-Base';
-use Kwiki::Installer '-base';
+use mixin 'Kwiki::Installer';
 use YAML;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 const class_id => 'socialmap';
 const class_title => 'SocialMap Blocks';

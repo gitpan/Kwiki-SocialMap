@@ -4,6 +4,10 @@ package Kwiki::SocialMap;
 
 Kwiki::SocialMap - Display social relation of this kwiki site
 
+=head1 DESCRIPTION
+
+Please see L<Graph::SocialMap> to know something about Social Map.
+
 =head1 COPYRIGHT
 
 Copyright 2004 by Kang-min Liu <gugod@gugod.org>.
@@ -21,7 +25,7 @@ use Kwiki::Plugin '-Base';
 use Kwiki::Installer '-base';
 use YAML;
 
-our $VERSION = '0.01';
+our $VERSION = '0.03';
 
 const class_id => 'socialmap';
 const class_title => 'SocialMap Blocks';
@@ -29,6 +33,35 @@ const class_title => 'SocialMap Blocks';
 sub register {
     my $registry = shift;
     $registry->add(wafl => socialmap => 'Kwiki::SocialMap::Wafl');
+    $registry->add(action => 'socialmap');
+}
+
+sub socialmap {
+    my $relation = $self->find_kwiki_social_relation;
+    $self->render_socialmap($relation);
+}
+
+sub find_kwiki_social_relation {
+    my $db = $self->hub->config->database_directory;
+    my $relation;
+    for my $page (<$db/*>) {
+	$page =~ s/$db\///;
+	$relation->{$page} = [qw/Alice Bob/];
+    }
+    return $relation;
+}
+
+sub render_socialmap {
+    my $relation = shift;
+    my $reldump = YAML::Dump($relation);
+
+    my $digest = Digest::MD5::md5_hex($reldump);
+    my $path = $self->plugin_directory;
+    my $file = "$path/socialmap.png";
+    my $gsmio = io($file);
+    my $gsm = Graph::SocialMap->new(-relation => $relation);
+    $gsm->save(-format=> 'png',-file=> $gsmio);
+    return {redirect => $file};
 }
 
 package Kwiki::SocialMap::Wafl;
@@ -45,7 +78,7 @@ sub to_html {
 # (If a page is modified, re-generate all the socialmap inside)
 # but put it in here will make it be called once per-socialmap-block.
 sub cleanup {
-    my $path = $self->hub->config->socialmap_directory;
+    my $path = $self->hub->socialmap->plugin_directory;
     my $page =$self->hub->pages->current;
     my $page_id = $page->id;
     for(<$path/$page_id/*.png>) {
@@ -60,7 +93,7 @@ sub render_socialmap {
     my $reldump = shift;
 
     my $digest = Digest::MD5::md5_hex($reldump);
-    my $path = $self->hub->config->socialmap_directory;
+    my $path = $self->hub->socialmap->plugin_directory;
     my $page = $self->hub->pages->current->id;
     my $file = "$path/$page/";
     mkdir($file) unless -d $file;
@@ -80,5 +113,5 @@ sub render_socialmap {
 
 package Kwiki::SocialMap;
 __DATA__
-__socialmap/.keepme__
+__plugin/socialmap/.keepme__
 This file is used to keep this directory.

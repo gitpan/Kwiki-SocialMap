@@ -25,7 +25,7 @@ use Kwiki::Plugin '-Base';
 use Kwiki::Installer '-base';
 use YAML;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 const class_id => 'socialmap';
 const class_title => 'SocialMap Blocks';
@@ -61,6 +61,9 @@ sub render_socialmap {
     my $digest = Digest::MD5::md5_hex($reldump);
     my $path = $self->plugin_directory;
     my $file = "$path/socialmap.png";
+
+    # XXX: always regen the graph. Not good.
+    unlink($file);
     my $gsmio = io($file);
     my $gsm = Graph::SocialMap->new(-relation => $relation);
     $gsm->save(-format=> 'png',-file=> $gsmio);

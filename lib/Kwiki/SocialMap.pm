@@ -25,7 +25,7 @@ use Kwiki::Plugin '-Base';
 use Kwiki::Installer '-base';
 use YAML;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 const class_id => 'socialmap';
 const class_title => 'SocialMap Blocks';
@@ -106,7 +106,11 @@ sub render_socialmap {
     $file .= "$digest.png";
 
     unless(-f $file) {
-	my $relation = YAML::Load($reldump);
+	my $relation;
+	eval { $relation = YAML::Load($reldump) };
+	if($@) {
+	    return qq{<span style="color: red;">Error: Input is not valide YAML. Please go back and edit it again</span>};
+	}
 	my $gsmio = io($file);
 	my $gsm = Graph::SocialMap->new(-relation => $relation);
 	$gsm->save(-format=> 'png',-file=> $gsmio);

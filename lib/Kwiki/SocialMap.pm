@@ -25,7 +25,7 @@ use Kwiki::Plugin '-Base';
 use Kwiki::Installer '-base';
 use YAML;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 const class_id => 'socialmap';
 const class_title => 'SocialMap Blocks';
@@ -102,13 +102,15 @@ sub render_socialmap {
     my $path = $self->hub->socialmap->plugin_directory;
     my $file = io->catfile($path,$page,"$digest.png")->assert;
     unless(-f "$file") {
+        $file->lock;
 	my $relation;
 	eval { $relation = YAML::Load($reldump) };
 	return qq{<span style="color: red;">Error: Input is not valide YAML. Please go back and edit it again</span>} if $@;
 	my $gsm = Graph::SocialMap->new(-relation => $relation);
+	$gsm->no_overlap(1);
 	$gsm->save(-format=> 'png',-file=> $file);
+        $file->unlock;
     }
-
     return qq{<img src="$file" />};
 }
 
@@ -116,14 +118,14 @@ sub render_socialmap {
 package Kwiki::SocialMap;
 __DATA__
 __template/tt2/socialmap_button.html__
-<!-- BEGIN recent_changes_button.html -->
-<a href="[% script_name %]?action=socialmap" title="Recent Changes">
+<!-- BEGIN socialmap_button.html -->
+<a href="[% script_name %]?action=socialmap" title="Social Map">
 Social Map
 </a>
-<!-- END recent_changes_button.html -->
+<!-- END socialmap_button.html -->
 __template/tt2/site_socialmap_screen.html__
 <!-- BEGIN site_socialmap_screen.html -->
-[% screen_title = 'User Preferences' %]
+[% screen_title = 'Site Social Map' %]
 [% INCLUDE kwiki_layout_begin.html %]
 <div class="site_socialmap">
 <img src="plugin/socialmap/socialmap.png"/>

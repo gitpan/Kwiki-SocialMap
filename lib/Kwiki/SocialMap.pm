@@ -25,7 +25,7 @@ use Kwiki::Plugin '-Base';
 use Kwiki::Installer '-base';
 use YAML;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 const class_id => 'socialmap';
 const class_title => 'SocialMap Blocks';
@@ -34,6 +34,8 @@ sub register {
     my $registry = shift;
     $registry->add(wafl => socialmap => 'Kwiki::SocialMap::Wafl');
     $registry->add(action => 'socialmap');
+    $registry->add(toolbar => 'socialmap_button',
+		   template => 'socialmap_button.html');
 }
 
 sub socialmap {
@@ -44,9 +46,10 @@ sub socialmap {
 sub find_kwiki_social_relation {
     my $db = $self->hub->config->database_directory;
     my $relation;
-    for my $page (<$db/*>) {
-	$page =~ s/$db\///;
-	$relation->{$page} = [qw/Alice Bob/];
+    for my $page ($self->pages->all) {
+	my $history = $self->hub->load_class('archive')->history($page);
+	my @edit_by = map { $_->{edit_by} } @$history;
+	$relation->{$page->id} = \@edit_by;
     }
     return $relation;
 }
@@ -110,8 +113,11 @@ sub render_socialmap {
 }
 
 1;
-
 package Kwiki::SocialMap;
 __DATA__
-__plugin/socialmap/.keepme__
-This file is used to keep this directory.
+__template/tt2/socialmap_button.html__
+<!-- BEGIN recent_changes_button.html -->
+<a href="[% script_name %]?action=socialmap" title="Recent Changes">
+Social Map
+</a>
+<!-- END recent_changes_button.html -->

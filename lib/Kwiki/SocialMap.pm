@@ -25,10 +25,11 @@ use Kwiki::Plugin '-Base';
 use Kwiki::Installer '-base';
 use YAML;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 const class_id => 'socialmap';
 const class_title => 'SocialMap Blocks';
+const screen_template => 'site_socialmap_screen.html';
 
 sub register {
     my $registry = shift;
@@ -41,6 +42,7 @@ sub register {
 sub socialmap {
     my $relation = $self->find_kwiki_social_relation;
     $self->render_socialmap($relation);
+    $self->render_screen;
 }
 
 sub find_kwiki_social_relation {
@@ -54,20 +56,18 @@ sub find_kwiki_social_relation {
     return $relation;
 }
 
+sub socialmap_file {
+    # XXX: always regen the graph. Not good.
+    my $path = $self->plugin_directory;
+    io->catfile($path, 'socialmap.png')->unlink;
+    return io->catfile($path,'socialmap.png')->assert;
+}
+
 sub render_socialmap {
     my $relation = shift;
-    my $reldump = YAML::Dump($relation);
-
-    my $digest = Digest::MD5::md5_hex($reldump);
-    my $path = $self->plugin_directory;
-    my $file = "$path/socialmap.png";
-
-    # XXX: always regen the graph. Not good.
-    unlink($file);
-    my $gsmio = io($file);
+    my $gsmio = $self->socialmap_file;
     my $gsm = Graph::SocialMap->new(-relation => $relation);
     $gsm->save(-format=> 'png',-file=> $gsmio);
-    return {redirect => $file};
 }
 
 package Kwiki::SocialMap::Wafl;
@@ -97,23 +97,16 @@ sub cleanup {
 # on every page rendering. That's totally a waste of time.
 sub render_socialmap {
     my $reldump = shift;
-
+    my $page = $self->hub->pages->current->id;
     my $digest = Digest::MD5::md5_hex($reldump);
     my $path = $self->hub->socialmap->plugin_directory;
-    my $page = $self->hub->pages->current->id;
-    my $file = "$path/$page/";
-    mkdir($file) unless -d $file;
-    $file .= "$digest.png";
-
-    unless(-f $file) {
+    my $file = io->catfile($path,$page,"$digest.png")->assert;
+    unless(-f "$file") {
 	my $relation;
 	eval { $relation = YAML::Load($reldump) };
-	if($@) {
-	    return qq{<span style="color: red;">Error: Input is not valide YAML. Please go back and edit it again</span>};
-	}
-	my $gsmio = io($file);
+	return qq{<span style="color: red;">Error: Input is not valide YAML. Please go back and edit it again</span>} if $@;
 	my $gsm = Graph::SocialMap->new(-relation => $relation);
-	$gsm->save(-format=> 'png',-file=> $gsmio);
+	$gsm->save(-format=> 'png',-file=> $file);
     }
 
     return qq{<img src="$file" />};
@@ -128,3 +121,12 @@ __template/tt2/socialmap_button.html__
 Social Map
 </a>
 <!-- END recent_changes_button.html -->
+__template/tt2/site_socialmap_screen.html__
+<!-- BEGIN site_socialmap_screen.html -->
+[% screen_title = 'User Preferences' %]
+[% INCLUDE kwiki_layout_begin.html %]
+<div class="site_socialmap">
+<img src="plugin/socialmap/socialmap.png"/>
+</div>
+[% INCLUDE kwiki_layout_end.html %]
+<!-- END site_socialmap_screen.html -->
